@@ -21,6 +21,9 @@ contacts = {}
 # account owner's id
 owner_id = 0
 
+chats_to_analyze = 3
+
+  
 def get_owner_name(data):
     personal_info = data.get("personal_information")
     if personal_info is None:
@@ -36,6 +39,7 @@ def get_owner_name(data):
         sys.exit()
     return owner_first_name + " "  + owner_last_name
 
+
 def get_owner_id(data):
     personal_info = data.get("personal_information")
     if (personal_info is None):
@@ -46,6 +50,7 @@ def get_owner_id(data):
         print("Something went wrong while obtaining owner's id. Exit")
         sys.exit()
     return owner_id
+
 
 # sorting by number of messages
 def insertionSort(arr):
@@ -132,8 +137,8 @@ def init_contact(id, name):
     contacts[owner_id][id]["message_counter"] = 0
     contacts[owner_id][id]["symbol_counter"] = 0
     contacts[owner_id][id]["word_counter"] = 0
-    contacts[owner_id][id]["links"] = 0
     contacts[owner_id][id]["avg_len"] = 0
+    contacts[owner_id][id]["links"] = 0
     #contact["words per message"] = 0
     #contact["most common words"] = {}
 
@@ -159,8 +164,6 @@ def analyze_message(message, sender):
     for word in words:
         sender["symbol_counter"] += len(word)
         sender["word_counter"] += 1
-
-
 
 
 def analyze_message_list(message_list, second_id):
@@ -197,8 +200,30 @@ def analyze_message_list(message_list, second_id):
     calc_avg_len(contacts[owner_id][second_id])
     calc_avg_len(contacts[second_id])
 
+
 def calc_avg_len(user):
-    user['avg_len'] = user['symbol_counter']/user['message_counter']
+    user['avg_len'] = user['word_counter']/user['message_counter']
+
+
+def print_data():
+    owner = contacts[owner_id]
+    owner_name = " "
+    for key, value in owner.items():
+        if key == 'name':
+            owner_name = value
+            print("owner's name: ", owner_name)
+            print()
+        else:
+            owner_data = value
+            user_data = contacts[key]
+            print('chat with: ', user_data['name'])
+            print(owner_name, ":")
+            for owner_key, owner_value in owner_data.items():
+                print(owner_key, ": ", owner_value)
+            print(user_data['name'], ":")
+            for user_key, user_value in user_data.items():
+                print(user_key, ": ", user_value)
+            print()
 
 
 try:
@@ -216,7 +241,7 @@ else:
     init_owner_contact(owner_id, get_owner_name(data))
     chats = get_chats(data)
     insertionSort(chats)
-    for i in range(3):
+    for i in range(chats_to_analyze):
         chat_info = chats[i]
         chat_type = get_chat_type(chat_info)
         messages_list = get_messages(chat_info)
@@ -229,9 +254,8 @@ else:
 
 
 finally:
+    print()
+    print_data()
+    print()
     print("\nReading finished. Closing..")
-    for x in contacts:
-        print(x)
-    print(" ")
-    print(contacts)
     file.close()
