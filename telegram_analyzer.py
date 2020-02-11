@@ -14,7 +14,7 @@ from collections import Counter
 '''
 
 # for opening file
-file_path = path.relpath("result.json")
+file_path = path.relpath("nazar/result.json")
 
 # for saving all info about chats
 contacts = {}
@@ -22,15 +22,15 @@ contacts = {}
 # account owner's id
 owner_id = None
 
-chats_to_analyze = 10
+CHATS_TO_ANALYZE =  5
 
-most_popular_words_number = 10
+MOST_POPULAR_WORDS_NUMBER = 15
 
-most_popular_symb_number = 10
+MOST_POPULAR_SYMB_NUMBER = 15
 
 last_sender = None
 
-last_time_sent = None
+last_time_sent = dict(year = 1970, month = 1, day = 0, hour = 0, minute = 0)
 
 
 def get_owner_name(data):
@@ -51,11 +51,11 @@ def get_owner_name(data):
 
 def get_owner_id(data):
     personal_info = data.get("personal_information")
-    if (personal_info is None):
+    if personal_info is None:
         print("Something went wrong while obtaining personal information. Exit")
         sys.exit()
     owner_id = personal_info.get("user_id")
-    if (owner_id is None):
+    if owner_id is None:
         print("Something went wrong while obtaining owner's id. Exit")
         sys.exit()
     return owner_id
@@ -144,6 +144,7 @@ def init_contact(id, name):
     contact['comma_ctr'] = 0
     contact['links_shared'] = 0
     contact['msg_edited'] = 0
+    contact['innitiative_days'] = 0
     contact["words_usage"] = Counter()
     contact["symb_usage"] = Counter()
     contacts[owner_id][id] = {}
@@ -154,13 +155,13 @@ def init_contact(id, name):
     contacts[owner_id][id]["comma_ctr"] = 0
     contacts[owner_id][id]["links_shared"] = 0
     contacts[owner_id][id]["msg_edited"] = 0
+    contacts[owner_id][id]["innitiative_days"] = 0
     contacts[owner_id][id]["words_usage"] = Counter()
     contacts[owner_id][id]["symb_usage"] = Counter()
 
 
 def register_contact(messages_list):
-    global contacts
-    global owner_id
+    global contacts, owner_id
     for i in range(len(messages_list)):
         if messages_list[i].get("type") == "message":
             temp_id = messages_list[i].get("from_id")
@@ -197,14 +198,12 @@ def analyze_message(message, sender):
         else:
             sender['words_usage'][temp] = 1
 
-def compare_time(date):
-    global last_time_sent
-    if date['day'] == last_time_sent['day']:
-        if date['hour'] == last_time_sent['hour']:
-            pass
-            #minutes
-        else:
-            pass
+
+def handle_interval(date, sender):
+    global last_time_sent, contacts
+    if date['day'] != last_time_sent['day']:
+        last_time_sent = date
+        sender['innitiative_days'] += 1
 
 
 def analyze_time(time_sent, sender):
@@ -212,14 +211,10 @@ def analyze_time(time_sent, sender):
     time_arr = time_sent.split('T')
     day = time_arr[0].split('-')
     minute = time_arr[1].split(':')
-    map(int, day)
-    map(int, minute)
     date = {}
-    date['year'], date['month'], date['day'], date['hour'], date['minute'] = day[0], day[1], day[2], minute[0], minute[1]
-    print(date)
+    date['year'], date['month'], date['day'], date['hour'], date['minute'] = int(day[0]), int(day[1]), int(day[2]), int(minute[0]), int(minute[1])
     if sender != last_sender:
-        compare_time(date)
-        last_sender = sender
+        handle_interval(date, sender)
 
 
 def analyze_message_list(message_list, second_id):
@@ -248,7 +243,7 @@ def analyze_message_list(message_list, second_id):
             if time_sent is None:
                 print('smth went wrong while getting date of sending message. Exit..')
                 sys.exit()
-            #analyze_time(time_sent, sender)
+            analyze_time(time_sent, sender)
 
             text = message.get('text')
             if isinstance(text, str):
@@ -288,17 +283,17 @@ def print_data():
             print(owner_name, ":")
             for owner_key, owner_value in owner_data.items():
                 if owner_key == 'words_usage':
-                    print(most_popular_symb_number, " most popular words: ", owner_value.most_common(most_popular_words_number))
+                    print(MOST_POPULAR_WORDS_NUMBER, " most popular words: ", owner_value.most_common(MOST_POPULAR_WORDS_NUMBER))
                 elif owner_key == 'symb_usage':
-                    print(most_popular_symb_number, " most popular letters: ", owner_value.most_common(most_popular_symb_number))
+                    print(MOST_POPULAR_SYMB_NUMBER, " most popular letters: ", owner_value.most_common(MOST_POPULAR_SYMB_NUMBER))
                 else:
                     print(owner_key, ": ", owner_value)
             print('---- partner ---- ')
             for user_key, user_value in user_data.items():
                 if user_key == 'words_usage':
-                    print(most_popular_words_number, " most popular words: ", user_value.most_common(most_popular_words_number))
+                    print(MOST_POPULAR_WORDS_NUMBER, " most popular words: ", user_value.most_common(MOST_POPULAR_WORDS_NUMBER))
                 elif user_key == 'symb_usage':
-                    print(most_popular_symb_number, " most popular letters: ", user_value.most_common(most_popular_symb_number))
+                    print(MOST_POPULAR_SYMB_NUMBER, " most popular letters: ", user_value.most_common(MOST_POPULAR_SYMB_NUMBER))
                 else:
                     print(user_key, ": ", user_value)
             print()
@@ -319,7 +314,7 @@ else:
     init_owner_contact(owner_id, get_owner_name(data))
     chats = get_chats(data)
     insertionSort(chats)
-    for i in range(chats_to_analyze):
+    for i in range(CHATS_TO_ANALYZE):
         chat_info = chats[i]
         chat_type = get_chat_type(chat_info)
         messages_list = get_messages(chat_info)
@@ -334,7 +329,7 @@ else:
 
 finally:
     print()
-    #print_data()
+    print_data()
     print()
     print("\nReading finished. Closing..")
     file.close()
