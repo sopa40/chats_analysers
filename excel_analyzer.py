@@ -7,21 +7,31 @@ from tkinter import *
 import xlsxwriter
 import sys
 
+# cxfreeze-quickstart for creating exe, nsis for creating installer
+
 old_file_path = ""
 new_file_path = ""
 
 new_day = " "
 
 
+SEVEN_DAYS_IN_SECONDS = 568800
+DAY_IN_SECONDS = 86400
+TEN_HOURS_IN_SECONDS = 36000
+
+days_past_in_sec = 0
+
 def update_data():
-    global new_day
+    global new_day, days_past_in_sec
     day_two = int(day2.get())
     month_two = int(month2.get())
     year_two = int(year2.get())
+    days_past_in_sec = (int(days_past.get()) * DAY_IN_SECONDS) - TEN_HOURS_IN_SECONDS
     if year_two < 2015 or day_two > 31 or month_two > 12 or day_two < 1 or month_two < 1:
         print("Wrong date input!")
         sys.exit()
     new_day = datetime(year_two, month_two, day_two)
+    print(new_day)
     root.destroy()
 
 
@@ -36,7 +46,7 @@ def load_current_file():
 
 
 root = tk.Tk()
-root.geometry('400x350')
+root.geometry('450x350')
 
 header_frame = Frame(root)
 header_frame.pack()
@@ -46,6 +56,12 @@ desc_frame.pack()
 
 current_date_frame = Frame(root)
 current_date_frame.pack()
+
+days_past_frame = Frame(root)
+days_past_frame.pack()
+
+explanation_frame = Frame(root)
+explanation_frame.pack()
 
 find_file_btn_frame = Frame(root)
 find_file_btn_frame.pack()
@@ -79,6 +95,15 @@ tk.Label(current_date_frame,
 year2 = tk.Entry(current_date_frame, width=5, justify=CENTER)
 year2.pack(side=tk.LEFT, pady=5)
 
+tk.Label(days_past_frame,
+         text="Дней с момента предыдущего отчета:", padx=5, pady=5).pack(side=tk.LEFT, pady=5)
+days_past = tk.Entry(days_past_frame, width=5, justify=CENTER)
+days_past.pack(side=tk.LEFT, pady=5)
+
+tk.Label(explanation_frame,
+         text="Например, с 15.10 по 20.10 прошло 5 дней.\n"
+              " То есть текущий день не учитывать.", padx=5, pady=5).pack(pady=5)
+
 find_first_file_btn = tk.Button(find_file_btn_frame,
                                 text='Загрузить предыдущий отчет', command=load_prev_file)
 find_first_file_btn.pack(padx=5, pady=5)
@@ -90,8 +115,6 @@ calculate_btn = tk.Button(calculate_btn_frame,
 calculate_btn.pack(padx=5, pady=5)
 
 root.mainloop()
-
-# cxfreeze-quickstart for creating exe, nsis for creating installer
 
 
 # TODO: Description, data input
@@ -115,8 +138,6 @@ RESULT_LEFTOVER = 2
 RESULT_DATE = 3
 RESULT_INPUT = 4
 RESULT_SELLS = 5
-
-SEVEN_DAYS_IN_SECONDS = 568800
 
 new_shops = {}
 old_shops = {}
@@ -152,9 +173,28 @@ def add_item(sheet, shop, row):
     elif temp_name == 'Марм60ЛТСетМарКлубн':
         product_name = 'Мармелад клубника'
     elif temp_name == 'Марм60ЛТСетМарЯблБаз':
-        product_name = 'Мармелад Я/Б'
+        product_name = 'Мармелад яблоко-базилик'
+    elif temp_name == 'Паст50ЛТСетнКлубн':
+        product_name = 'Пастила клубника'
+    elif temp_name == 'Паст50ЛТСетнМалин':
+        product_name = 'Пастила малина'
+    elif temp_name == 'Печ40ЛТСетнКлубн':
+        product_name = 'Печенье клубника'
+    elif temp_name == 'Печ40ЛТСетнАбрик':
+        product_name = 'Печенье абрикос'
+    elif temp_name == 'Печ40ЛТСетнМалин':
+        product_name = 'Печенье малина'
+    elif temp_name == 'Печ40ЛТСетнСлив':
+        product_name = 'Печенье слива'
+    elif temp_name == 'Марм60ЛТСетнМарМалин':
+        product_name = 'Мармелад малина'
+
+
     else:
         product_name = sheet[product_cell_name].value
+
+
+
 
     leftover = "{}{}".format(COLUMN_LEFTOVER, row)
     input = "{}{}".format(COLUMN_INPUT, row)
@@ -195,25 +235,60 @@ result = {}
 for shop_name in new_shops:
     result_shop = result[shop_name] = {}
     new_shop = new_shops[shop_name]
-    old_shop = old_shops[shop_name]
+    if shop_name in old_shops:
+        old_shop = old_shops[shop_name]
+    else:
+        old_shop = new_shop
     for product_name in new_shop:
         new_product = new_shop[product_name]
-        if product_name not in old_shop:
-            print(product_name, " магазин ", shop_name)
+        if new_product['date'] is None:
+            new_product['date'] = "Пусто"
+        if new_product['leftover'] is None:
+            new_product['leftover'] = "Пусто"
+        if new_product['input'] is None:
+            new_product['input'] = "Пусто"
+
+        if new_product['input'] == "Пусто" or new_product['date'] == "Пусто":
             result_product = result_shop[product_name] = {'sells': 0, 'leftover': new_product['leftover'],
-                                                          'date': new_product['date'], 'input': new_product['input']}
-            timediff = new_day - new_product['date']
-            if timediff.total_seconds() < SEVEN_DAYS_IN_SECONDS:
-                result_product['sells'] = new_product['input']
-            result_product['sells'] -= new_product['leftover']
+                                                          'date': "Пусто", 'input': "Пусто"}
+        else:
+            result_product = result_shop[product_name] = {'sells': 0, 'leftover': new_product['leftover'],
+                                                      'date': new_product['date'], 'input': new_product['input']}
+        if product_name not in old_shop:
+
+            if new_product['date'] == "Пусто":
+                timediff = new_day - new_day
+            else:
+                timediff = new_day - new_product['date']
+
+            if timediff.total_seconds() < days_past_in_sec:
+                if (new_product['input'] == "Пусто"):
+                    result_product['sells'] = 0
+                else:
+                    result_product['sells'] = new_product['input']
+            if not(new_product['leftover'] == "Пусто"):
+                result_product['sells'] -= new_product['leftover']
+
         else:
             old_product = old_shop[product_name]
-            result_product = result_shop[product_name] = {'sells': 0, 'leftover': new_product['leftover'],
-                                                          'date': new_product['date'], 'input': new_product['input']}
-            timediff = new_day - new_product['date']
-            if timediff.total_seconds() < SEVEN_DAYS_IN_SECONDS:
-                result_product['sells'] = new_product['input']
-            result_product['sells'] += (old_product['leftover'] - new_product['leftover'])
+            if old_product['leftover'] is None:
+                old_product['leftover'] = "Пусто"
+
+            if new_product['date'] == "Пусто":
+                timediff = new_day - new_day
+            else:
+                timediff = new_day - new_product['date']
+
+            if timediff.total_seconds() < days_past_in_sec:
+                if new_product['input'] == "Пусто":
+                    result_product['sells'] = 0
+                else:
+                    result_product['sells'] = new_product['input']
+
+            if old_product['leftover'] == "Пусто":
+                result_product['sells'] += (0 - new_product['leftover'])
+            else:
+                result_product['sells'] += (old_product['leftover'] - new_product['leftover'])
 
 
 result_name = 'Звіт за ' + str(new_day.day) + '.' + str(new_day.month)  +'.' + str(new_day.year) + '.xlsx'
@@ -251,7 +326,10 @@ for shop_name in result:
     for prod_name in shop:
         prod = shop[prod_name]
         worksheet.write(row_num, RESULT_SHOP_NAME, shop_name)
-        date = str(prod['date'].day) + '.' + str(prod['date'].month) + '.' + str(prod['date'].year)
+        if prod['date'] == "Пусто":
+            date = "Пусто"
+        else:
+            date = str(prod['date'].day) + '.' + str(prod['date'].month) + '.' + str(prod['date'].year)
         if prod['sells'] != 0 or prod['leftover'] != 0:
             worksheet.write(row_num, RESULT_PROD_NAME, prod_name, colored)
             worksheet.write(row_num, RESULT_LEFTOVER, prod['leftover'], colored)
@@ -271,5 +349,4 @@ for shop_name in result:
 worksheet.autofilter(0, RESULT_SHOP_NAME, row_num + 10, RESULT_SELLS)
 worksheet.freeze_panes(1, 0)
 workbook.close()
-
 
